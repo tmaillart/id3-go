@@ -493,7 +493,7 @@ func NewImageFrame(ft FrameType, mimeType string, imageData []byte) *ImageFrame 
 	imageFrame := &ImageFrame{
 		DataFrame:   *dataFrame,
 		pictureType: byte(0x03), // Front Cover
-		description: "front cover\x00",
+		description: "cover\x00",
 	}
 	imageFrame.SetEncoding("UTF-8")
 	imageFrame.SetMIMEType(mimeType)
