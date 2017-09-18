@@ -6,6 +6,7 @@ package v2
 import (
 	"errors"
 	"fmt"
+
 	"github.com/mikkyang/id3-go/encodedbytes"
 )
 
@@ -484,6 +485,19 @@ type ImageFrame struct {
 	mimeType    string
 	pictureType byte
 	description string
+}
+
+func NewImageFrame(ft FrameType, mimeType string, imageData []byte) *ImageFrame {
+	dataFrame := NewDataFrame(ft, imageData)
+
+	imageFrame := &ImageFrame{
+		DataFrame:   *dataFrame,
+		pictureType: byte(0x03), // Front Cover
+		description: "front cover\x00",
+	}
+	imageFrame.SetEncoding("UTF-8")
+	imageFrame.SetMIMEType(mimeType)
+	return imageFrame
 }
 
 func ParseImageFrame(head FrameHead, data []byte) Framer {
