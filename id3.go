@@ -8,6 +8,8 @@ import (
 	"github.com/tmaillart/id3-go/v1"
 	"github.com/tmaillart/id3-go/v2"
 	"os"
+	"bytes"
+	"fmt"
 )
 
 const (
@@ -46,6 +48,12 @@ type File struct {
 	file         *os.File
 }
 
+type Memory struct {
+	Tagger
+	originalSize int
+	file         []byte
+}
+
 // Opens a new tagged file
 func Open(name string) (*File, error) {
 	fi, err := os.OpenFile(name, os.O_RDWR, 0666)
@@ -66,6 +74,23 @@ func Open(name string) (*File, error) {
 	}
 
 	return file, nil
+}
+
+// Opens a new tagged file
+func Create(data []byte) (*Memory, error) {
+	mem:=&Memory{file:data}
+	reader:=bytes.NewReader(data)
+	if v2Tag := v2.ParseTag(reader); v2Tag != nil {
+		mem.Tagger = v2Tag
+		mem.originalSize = v2Tag.Size()
+	} else if v1Tag := v1.ParseTag(reader); v1Tag != nil {
+		mem.Tagger = v1Tag
+	} else {
+		// Add a new tag if none exists
+		mem.Tagger = v2.NewTag(LatestVersion)
+	}
+
+	return mem, nil
 }
 
 // Saves any edits to the tagged file
@@ -103,4 +128,36 @@ func (f *File) Close() error {
 	}
 
 	return nil
+}
+
+func (f *Memory) Apply() error {
+	var cursor int
+	fmt.Println(f.Tagger.Bytes(), f.Tagger.Size(), len(f.file))
+	switch f.Tagger.(type) {
+	case (*v1.Tag):
+		cursor=len(f.file)-1-v1.TagSize
+		copy(f.file[cursor:],f.Tagger.Bytes())
+		return nil
+	case (*v2.Tag):
+		if f.Size() > f.originalSize {
+			start := int64(f.originalSize + v2.HeaderSize)
+			offset := int64(f.Tagger.Size() - f.originalSize)
+			fmt.Println(start,offset)
+			/*
+			tmp:=append(f.file[:start],f.Tagger.Bytes()...)
+			fmt.Println(len(tmp),len(f.Tagger.Bytes()))
+			start+offset
+			*/
+			f.file=append(f.Tagger.Bytes(),f.file...)
+			fmt.Println(len(f.file))
+		}
+		cursor=0
+	default:
+		return errors.New("Close: unknown tag version")
+	}
+	return nil
+}
+
+func (m *Memory) GetContent() []byte {
+	return m.file
 }

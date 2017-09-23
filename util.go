@@ -6,6 +6,7 @@ package id3
 import (
 	"io"
 	"os"
+//	"fmt"
 )
 
 func shiftBytesBack(file *os.File, start, offset int64) error {
@@ -54,6 +55,46 @@ func shiftBytesBack(file *os.File, start, offset int64) error {
 	if _, err := file.WriteAt(wrBuf[:rn], wrOffset); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+
+func shiftBytesBackArray(file []byte, start, offset int64) error {
+	end := int64(len(file))
+
+	wrBuf := make([]byte, offset)
+	rdBuf := make([]byte, offset)
+
+	wrOffset := offset
+	rdOffset := start
+
+	wrBuf=file[rdOffset:]
+	rn:=len(wrBuf)
+
+	rdOffset += int64(rn)
+
+	for {
+		if rdOffset >= end {
+			break
+		}
+
+		rdBuf=file[rdOffset:]
+		n:=len(rdBuf)
+
+		if rdOffset+int64(n) > end {
+			n = int(end - rdOffset)
+		}
+
+		copy(file[wrOffset:rn],wrBuf[:rn])
+
+		rdOffset += int64(n)
+		wrOffset += int64(rn)
+		copy(wrBuf, rdBuf)
+		rn = n
+	}
+
+	copy(file[wrOffset:rn],wrBuf[:rn])
 
 	return nil
 }
