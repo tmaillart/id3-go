@@ -4,12 +4,12 @@
 package id3
 
 import (
+	"bytes"
 	"errors"
+	"os"
+
 	"github.com/tmaillart/id3-go/v1"
 	"github.com/tmaillart/id3-go/v2"
-	"os"
-	"bytes"
-	"fmt"
 )
 
 const (
@@ -78,8 +78,8 @@ func Open(name string) (*File, error) {
 
 // Opens a new tagged file
 func Create(data []byte) (*Memory, error) {
-	mem:=&Memory{file:data}
-	reader:=bytes.NewReader(data)
+	mem := &Memory{file: data}
+	reader := bytes.NewReader(data)
 	if v2Tag := v2.ParseTag(reader); v2Tag != nil {
 		mem.Tagger = v2Tag
 		mem.originalSize = v2Tag.Size()
@@ -132,26 +132,16 @@ func (f *File) Close() error {
 
 func (f *Memory) Apply() error {
 	var cursor int
-	fmt.Println(f.Tagger.Bytes(), f.Tagger.Size(), len(f.file))
 	switch f.Tagger.(type) {
 	case (*v1.Tag):
-		cursor=len(f.file)-1-v1.TagSize
-		copy(f.file[cursor:],f.Tagger.Bytes())
+		cursor = len(f.file) - 1 - v1.TagSize
+		copy(f.file[cursor:], f.Tagger.Bytes())
 		return nil
 	case (*v2.Tag):
 		if f.Size() > f.originalSize {
-			start := int64(f.originalSize + v2.HeaderSize)
-			offset := int64(f.Tagger.Size() - f.originalSize)
-			fmt.Println(start,offset)
-			/*
-			tmp:=append(f.file[:start],f.Tagger.Bytes()...)
-			fmt.Println(len(tmp),len(f.Tagger.Bytes()))
-			start+offset
-			*/
-			f.file=append(f.Tagger.Bytes(),f.file...)
-			fmt.Println(len(f.file))
+			f.file = append(f.Tagger.Bytes(), f.file...)
 		}
-		cursor=0
+		cursor = 0
 	default:
 		return errors.New("Close: unknown tag version")
 	}
